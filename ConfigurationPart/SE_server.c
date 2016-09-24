@@ -15,9 +15,6 @@
 #define RESET "\033[0m"
 
 
-// #define BUFF_SIZE 24
-// char line[BUFF_SIZE];
-
 static int destroy_flag = 0;
 
 static void INT_HANDLER(int signo) {
@@ -54,7 +51,6 @@ int websocket_write(struct lws *wsi_in, char *str, int str_size_in)
     return n;
 }
 
-
 static int ws_service_callback(
                          struct lws *wsi,
                          enum lws_callback_reasons reason, void *user,
@@ -62,7 +58,6 @@ static int ws_service_callback(
 {
 
     int f_temp, f_consol, f_luz;
-
     switch (reason) {
 
         case LWS_CALLBACK_ESTABLISHED:
@@ -73,7 +68,7 @@ static int ws_service_callback(
         //* If receive a data from client*/
         case LWS_CALLBACK_RECEIVE:
             printf(KCYN_L"[Main Service] Server recvived:%s\n"RESET,(char *)in);
-            sscanf( (char *)in, "%*s%d%*s%d%*s%d", &f_temp, &f_luz, &f_consol);
+            sscanf( (char *)in, "{\"f_temp\":%d,\"f_luz\":%d,\"f_consol\":%d}", &f_temp, &f_luz, &f_consol);
             printf("t%d,l%d,c%d\n",f_temp, f_luz, f_consol);
             break;
         // case LWS_CALLBACK_SERVER_WRITEABLE:
@@ -99,10 +94,6 @@ static int ws_service_callback(
 struct per_session_data {
     int fd;
 };
-
-
-
-
 
 int main(void) {
     // server url will usd port 5000
@@ -156,7 +147,7 @@ int main(void) {
    
     while ( !destroy_flag ) 
     {
-        lws_service(context, 50);//second parameter is timeout.
+        lws_service(context, 0);//second parameter is timeout.
     }
     usleep(10);
     lws_context_destroy(context);

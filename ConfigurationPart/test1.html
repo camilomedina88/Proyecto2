@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<style>
+a:link    {color:green; background-color:transparent; text-decoration:none}
+a:visited {color:pink; background-color:transparent; text-decoration:none}
+a:hover   {color:red; background-color:transparent; text-decoration:underline}
+a:active  {color:yellow; background-color:transparent; text-decoration:underline}
+
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+td, th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+
+tr:nth-child(even) {
+    background-color: #dddddd;
+}
+
+</style>
+
+
+<head>
+  <title>My First HTML</title>
+  <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="3">
+  <meta name="author" content="Hege Refsnes">
+  <meta name="keywords" content="HTML, CSS, XML, JavaScript">
+  <meta name="description" content="Free Web tutorials">
+  <base href="http://www.w3schools.com/images/" target="_blank">
+</head>
+
+<!-- Write your comments here -->
+
+<body style="background-color:powderblue;">
+	<h1> HEY  HEY HEY</h1>
+	<h2>Hey Hey Hey</h2>
+	<h3>Hey Hey Hey</h3>
+	<h4>Hey Hey Hey</h4>
+	<h5>Hey Hey Hey</h5>
+	<h6>Hey Hey Hey</h6>
+	<a href="#imalink"><big>Link al final de la página</big></a> 
+	<p>This is a <br>paaaaragraph <a href="http://www.ar-smart.co" target="_blank">AR-Smart</a></p>
+	<p>This is other Paragraph!<a> helloooo </a></p>
+	<img src="http://www.w3schools.com/html/w3schools.jpg" style="width:150px">
+	<hr>
+	<p title="I'm a tooltip">BLABLABLA</p>
+
+	<pre>Hello..     It's me
+						bla bla
+	</pre>
+
+	<h2 style="color:red;">I am red</h2>
+	<h2 style="color:blue;">I am blue</h2>
+
+	<p style="font-size:160%;">This is a paragraph.</p>
+
+	<h1 style="text-align:center;">Centered Heading</h1>
+	<p style="text-align:center;">Centered paragraph.</p>
+
+	<p>
+	<b>This text is bold</b> <br>
+	<strong>This text is strong</strong> <br>
+	<i>This text is italic</i> <br>
+	<em>This text is emphasized</em> <br>
+	</p>
+
+	<h2>HTML <small>Small</small> Formatting</h2>
+	<h2>HTML <mark>Marked</mark> Formatting</h2>
+	<p>My favorite color is <del>blue</del> red.</p>
+	<p>My favorite <ins>color</ins> is red.</p>
+	<p>This is <sub>subscripted</sub> text.</p>
+	<p>This is <sup>superscripted</sup> text.</p>
+
+	<p>WWF's goal is to: <q>Build a future where people live in harmony with nature.</q></p>
+
+	<p>Here is a quote from WWF's website:</p>
+	<blockquote cite="http://www.worldwildlife.org/who/index.html">
+	For 50 years, WWF has been protecting the future of nature.
+	The world's leading conservation organization,
+	WWF works in 100 countries and is supported by
+	1.2 million members in the United States and
+	close to 5 million globally.
+	</blockquote>
+
+	<address>
+	Written by John Doe.<br> 
+	Visit us at:<br>
+	Example.com<br>
+	Box 564, Disneyland<br>
+	USA
+	</address>
+
+
+	<code>
+	var x = 5;<br>
+	var y = 6;<br>
+	document.getElementById("demo").innerHTML = x + y;
+	</code>
+
+	<pre>
+	<code>
+	var x = 5;
+	var y = 6;
+	document.getElementById("demo").innerHTML = x + y;
+	</code>
+	</pre>
+
+
+	<h2 id="imalink" style="background-color:rgb(255,0,0)">
+	Background-color set by using rgb(255,0,0)
+	</h2>
+
+	<table style="width:100%">
+	  <tr>
+	    <th>Firstname</th>
+	    <th>Lastname</th> 
+	    <th>Age</th>
+	  </tr>
+	  <tr>
+	    <td>Jill</td>
+	    <td>Smith</td> 
+	    <td>50</td>
+	  </tr>
+	  <tr>
+	    <td>Eve</td>
+	    <td>Jackson</td> 
+	    <td>94</td>
+	  </tr>
+</table>
+
+<ul>
+  <li>Coffee</li>
+  <li>Tea</li>
+  <li>Milk</li>
+</ul>
+
+<ul style="list-style-type:square">
+  <li>Coffee</li>
+  <li>Tea</li>
+  <li>Milk</li>
+</ul>
+
+<ul style="list-style-type:none">
+  <li>Coffee</li>
+  <li>Tea</li>
+  <li>Milk</li>
+</ul>
+
+<ol>
+  <li>Coffee</li>
+  <li>Tea</li>
+  <li>Milk</li>
+</ol>
+
+<ol type="1">
+  <li>Coffee</li>
+  <li>Tea</li>
+  <li>Milk</li>
+</ol>
+
+<ol type="A">
+  <li>Coffee</li>
+  <li>Tea</li>
+  <li>Milk</li>
+</ol>
+
+<ol type="a">
+  <li>Coffee</li>
+  <li>Tea</li>
+  <li>Milk</li>
+</ol>
+
+<ol type="i">
+  <li>Coffee</li>
+  <li>Tea</li>
+  <li>Milk</li>
+</ol>
+
+<dl>
+  <dt>Coffee</dt>
+  <dd>- black hot drink</dd>
+  <dt>Milk</dt>
+  <dd>- white cold drink</dd>
+</dl>
+
+<ul>
+  <li>Coffee</li>
+  <li>Tea
+    <ul>
+      <li>Black tea</li>
+      <li>Green tea</li>
+    </ul>
+  </li>
+  <li>Milk</li>
+</ul>
+
+
+<div style="background-color:black;color:white;padding:20px;">
+  <h2>London</h2>
+  <p>London is the capital city of England. It is the most populous city in the United Kingdom, with a metropolitan area of over 13 million inhabitants.</p>
+</div>
+
+
+<h1>My <span style="color:red">Important</span> Heading</h1>
+
+
+<button type="button" onclick="myFunction()">Click Me!</button>
+<p id="demo">This is a demonstration.</p>
+<script>
+function myFunction() {
+    document.getElementById("demo").innerHTML = "Hello JavaScript!";
+}
+</script>
+
+
+<form>
+  First name:<br>
+  <input type="text" name="firstname"><br>
+  Last name:<br>
+  <input type="text" name="lastname">
+</form>
+
+<form>
+  <input type="radio" name="gender" value="male" checked> Male<br>
+  <input type="radio" name="gender" value="female"> Female<br>
+  <input type="radio" name="gender" value="other"> Other
+</form>
+
+<form action="action_page.php">
+  First name:<br>
+  <input type="text" name="firstname" value="Mickey"><br>
+  Last name:<br>
+  <input type="text" name="lastname" value="Mouse"><br><br>
+  <input type="submit" value="Submit">
+</form>
+
+<form action="action_page.php">
+  <fieldset>
+    <legend>Personal information:</legend>
+    First name:<br>
+    <input type="text" name="firstname" value="Mickey"><br>
+    Last name:<br>
+    <input type="text" name="lastname" value="Mouse"><br><br>
+    <input type="submit" value="Submit">
+  </fieldset>
+</form>
+
+
+<form action="action_page.php">
+  <select name="cars">
+    <option value="volvo">Volvo</option>
+    <option value="saab">Saab</option>
+    <option value="fiat">Fiat</option>
+    <option value="audi">Audi</option>
+  </select>
+  <br><br>
+  <input type="submit">
+</form>
+
+
+
+
+
+<ul>
+	<li>Hello</li>
+	<li>It's me</li>
+	<li id="list"></li>
+</ul>
+
+<script>
+//hello
+	document.getElementById("list").innerHTML = "Adelle"
+</script>
+
+</body>
+</html>

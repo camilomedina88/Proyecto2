@@ -18,14 +18,10 @@
                 websocket.onerror = function () {
                 	document.getElementById("state").innerHTML = "Desconectado";
                     $('#state').css('color', 'red');
-                    document.getElementById("temp").value = "x";
-					document.getElementById("luz").value = "x";
-					document.getElementById("consol").value = "x";
 					$("div").hide();
                 };
                 websocket.onmessage = function (message) {
                     console.log(message.data);
-                    $('#received').prepend($('<p>', { text: message.data }));
                     var current_data = JSON.parse(message.data);
                     document.getElementById("temp").value = " " + current_data.f_temp;
 					document.getElementById("luz").value = " " + current_data.f_luz;
@@ -38,9 +34,9 @@
                 	
                     e.preventDefault();
                     var config_json = '{"f_temp":' + $("#temp").val() + ',"f_luz":' +  $("#luz").val() + ',"f_consol":' + $("#consol").val() + "}"
-                    document.getElementById("result").innerHTML = "Mensaje enviado:" + config_json;
+                    document.getElementById("result").innerHTML = "Mensaje enviado:<br> Frecuencia de muestreo de temperatura: " + $("#temp").val()
+                    	+ "<br>Frecuencia de muestreo de luz: " + $("#luz").val() + "<br>Frecuencia de consolidación: " + $("#consol").val() ;
                     websocket.send(config_json);
-                    $('input').val('');
                 });
             });
         </script>
