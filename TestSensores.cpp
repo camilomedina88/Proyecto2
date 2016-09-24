@@ -34,6 +34,7 @@ typedef struct sensorTemp {
 typedef struct infoUsuario {
 	int IDmemoryLuz;
 	int IDmemoryTemp;
+	int IDmemoryConso;
 } infoUsuario;
 
 typedef struct datosluz {
@@ -50,15 +51,46 @@ typedef struct indices {
 	int indLuz, indTemp, indCom;
 } indices;
 
-typedef struct comandos{
+typedef struct comandos {
 	time_t tiempo;
-	int freqTemp, freqLuz,freqconsol;
-}comandos;
-
+	int freqTemp, freqLuz, freqconsol;
+} comandos;
 
 int shmidtempdatos;
 int shmidluzdatos;
 int shmidindices;
+
+void *consolidacion(void *arg) {
+
+	char* shared_memory_conso;
+	int freqMuestras = 12;
+
+	//Buffer Temperatura
+	datosTemp* buffer_Temp;
+	buffer_Temp = (datosTemp*) shmat(shmidtempdatos, 0, 0);
+	//Buffer Comandos
+	comandos* buffer_comandos;
+	buffer_comandos = (comandos*) shmat(shmidluzdatos, 0, 0);
+	//Infices
+	indices *indicestodos;
+	indicestodos = (indices*) shmat(shmidindices, 0, 0);
+	//Frecuencias
+	infoUsuario *frecuencias = (infoUsuario *) arg;
+	int IDFreqMuestras = frecuencias->IDmemoryConso;
+	shared_memory_conso = (char*) shmat(IDFreqMuestras, 0, 0);
+
+	//Buffer Luz
+	datosLuz* buffer_luz;
+	buffer_luz = (datosLuz*) shmat(shmidluzdatos, 0, 0);
+
+	for (;;) {
+		sleep(freqMuestras);
+
+		sscanf(shared_memory_conso, "%d", &freqMuestras);
+	}
+
+	return NULL;
+}
 
 void *usuario(void *arg) {
 
@@ -70,49 +102,45 @@ void *usuario(void *arg) {
 
 	int tempfreqdefault;
 	int luzfreqdefault;
+	int consofreqdefault;
 	char* shared_memory_luz;
 	char* shared_memory_temp;
+	char* shared_memory_conso;
 	int identificadorLuz = luz->IDmemoryLuz;
 	shared_memory_luz = (char*) shmat(identificadorLuz, 0, 0);
 	printf("USR hnmshared memory attached at address %p\n", shared_memory_luz);
 	int identificadorTemp = luz->IDmemoryTemp;
 	shared_memory_temp = (char*) shmat(identificadorTemp, 0, 0);
 	printf("USR hnmshared memory attached at address %p\n", shared_memory_temp);
-
+	int identificadorConso = luz->IDmemoryConso;
+	shared_memory_conso = (char*) shmat(identificadorConso, 0, 0);
+	printf("USR hnmshared memory attached at address %p\n", shared_memory_temp);
 	indices *indicecomando;
 	indicecomando = (indices*) shmat(shmidindices, 0, 0);
-	indicecomando->indCom= 0;
+	indicecomando->indCom = 0;
 
 	for (;;) {
 
 		time_t tiempo = time(0);
-
 		cout << "INGRESE FRECUENCIA LUZ: ";
 		scanf("%d", &luzfreqdefault);
 		sprintf(shared_memory_luz, "%d", luzfreqdefault);
 		printf("%s\n", shared_memory_luz);
-		comandoActual.freqLuz=luzfreqdefault;
-
+		comandoActual.freqLuz = luzfreqdefault;
 		buffer_comandos[indicecomando->indCom] = comandoActual;
-
 		cout << "INGRESE FRECUENCIA TEMPERATURA: ";
 		scanf("%d", &tempfreqdefault);
 		sprintf(shared_memory_temp, "%d", tempfreqdefault);
 		printf("%s\n", shared_memory_temp);
-		comandoActual.freqTemp=tempfreqdefault;
-
-
-		//PENDIENTE FRECUENCIA CONSOLIDACION
-
-		comandoActual.tiempo=tiempo;
-
-
-
+		comandoActual.freqTemp = tempfreqdefault;
+		cout << "INGRESE FRECUENCUA CONSOLIDACION:";
+		scanf("%d", &consofreqdefault);
+		sprintf(shared_memory_conso, "%d", consofreqdefault);
+		printf("%s\n", shared_memory_conso);
+		comandoActual.freqconsol = consofreqdefault;
+		comandoActual.tiempo = tiempo;
 		buffer_comandos[indicecomando->indCom] = comandoActual;
 		indicecomando->indCom += 1;
-
-
-
 	}
 
 	return NULL;
@@ -207,6 +235,10 @@ void *temperatura(void *parametros) {
 	}
 	return NULL;
 }
+// ----------------------------------------------------------------------------------------------//
+// ----------------------------------------------------------------------------------------------//
+// ----------------------------------------------------------------------------------------------//
+// ----------------------------------------------------------------------------------------------//
 
 int main() {
 
@@ -248,6 +280,14 @@ int main() {
 		exit(1);
 	}
 
+	int shmidconso; //shared memory ID Freq Consolidacion
+	if ((shmidconso = shmget(IPC_PRIVATE, size,
+	IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR)) == -1) {
+		perror("shmget");
+		cout << "Esta Jodido en consolidacion" << endl;
+		exit(1);
+	}
+
 	//shared memory ID Datos Luz
 	if ((shmidluzdatos = shmget(IPC_PRIVATE, sizeof(datosLuz),
 	IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR)) == -1) {
@@ -285,18 +325,21 @@ int main() {
 
 	usuario1.IDmemoryLuz = shmidluz;
 	usuario1.IDmemoryTemp = shmidtemp;
+	usuario1.IDmemoryConso = shmidconso;
 
 	//Creacion Hilos
 
-	pthread_t HiloLuz, HiloTmp, HiloUsr;
+	pthread_t HiloLuz, HiloTmp, HiloUsr, HiloConso;
 
 	pthread_create(&HiloUsr, NULL, usuario, (void *) &usuario1);
 	pthread_create(&HiloLuz, NULL, luz, (void *) &luz1);
 	pthread_create(&HiloTmp, NULL, temperatura, (void *) &temp1);
+	pthread_create(&HiloConso, NULL, consolidacion, (void *) &usuario1);
 
 	pthread_join(HiloUsr, NULL);
 	pthread_join(HiloLuz, NULL);
 	pthread_join(HiloTmp, NULL);
+	pthread_join(HiloConso, NULL);
 
 	printf("Fin\n");
 
