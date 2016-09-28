@@ -59,18 +59,26 @@ typedef struct comandos {
 int shmidtempdatos;
 int shmidluzdatos;
 int shmidindices;
+int shmidcomandos;
+
+pthread_mutex_t mutex_shidtempdatos = PTHREAD_MUTEX_INITIALIZER; //Mutex Buffer Datos Temperatura
+pthread_mutex_t mutex_shidluzdatos = PTHREAD_MUTEX_INITIALIZER; // Mutex buffer datos luz
+pthread_mutex_t mutex_shidindices = PTHREAD_MUTEX_INITIALIZER; //Mutex indices
+pthread_mutex_t mutex_shidluz = PTHREAD_MUTEX_INITIALIZER; //Mutex frecuencia luz
+pthread_mutex_t mutex_shidtemp = PTHREAD_MUTEX_INITIALIZER; // Mutex frecuencia temperatura
+pthread_mutex_t mutex_shidconso = PTHREAD_MUTEX_INITIALIZER; //Mutex Frecuencia Consolidacion
+pthread_mutex_t mutex_shidcomandos = PTHREAD_MUTEX_INITIALIZER; //Mutex Buffer Comandos
 
 void *consolidacion(void *arg) {
 
 	char* shared_memory_conso;
 	int freqMuestras = 12;
-
 	//Buffer Temperatura
 	datosTemp* buffer_Temp;
 	buffer_Temp = (datosTemp*) shmat(shmidtempdatos, 0, 0);
 	//Buffer Comandos
 	comandos* buffer_comandos;
-	buffer_comandos = (comandos*) shmat(shmidluzdatos, 0, 0);
+	buffer_comandos = (comandos*) shmat(shmidcomandos, 0, 0);
 	//Infices
 	indices *indicestodos;
 	indicestodos = (indices*) shmat(shmidindices, 0, 0);
@@ -78,7 +86,6 @@ void *consolidacion(void *arg) {
 	infoUsuario *frecuencias = (infoUsuario *) arg;
 	int IDFreqMuestras = frecuencias->IDmemoryConso;
 	shared_memory_conso = (char*) shmat(IDFreqMuestras, 0, 0);
-
 	//Buffer Luz
 	datosLuz* buffer_luz;
 	buffer_luz = (datosLuz*) shmat(shmidluzdatos, 0, 0);
@@ -86,7 +93,73 @@ void *consolidacion(void *arg) {
 	for (;;) {
 		sleep(freqMuestras);
 
+		//CONSOLIDACION LUZ
+		// Mutex shidindices lock
+		if (indicestodos->indLuz > 0) {
+
+			while (indicestodos->indLuz > 0) {
+
+				//Mutex shidluzdatos lock
+
+				//Aqui se lee el buffer de luz
+				//Mutex shidluzdatos unlock
+
+			}
+
+			//Transmitir los datos de luz mediante sockets
+
+			indicestodos->indLuz = 0;
+		} else {
+			cout << "NADA QUE TRANSMITIR PARA LUZ" << endl;
+		}
+
+		// Mutex shidindices unlock
+
+		//CONSOLIDACIÓN TEMPERATURA
+		// Mutex shidindices lock
+		if (indicestodos->indTemp > 0) {
+
+			while (indicestodos->indTemp > 0) {
+
+				//Mutex shidtempzdatos lock
+				//Aqui se lee el buffer de temperatura
+				//Mutex shidtempdatos unlock
+
+			}
+			//Transmitir los datos temperatura mediante sockets
+
+			indicestodos->indTemp = 0;
+
+		} else {
+			cout << "NADA QUE TRANSMITIR PARA TEMPERATURA" << endl;
+		}
+		// Mutex shidindices unlock
+
+		//CONSOLIDACIÓN COMANDOS
+		// Mutex shidindices lock
+
+		if (indicestodos->indCom > 0) {
+
+			while (indicestodos->indCom > 0) {
+
+				//Mutex shmidcomandos lock
+				//Aqui se lee el buffer de comandos
+
+				//Mutex shmidcomandos lock
+			}
+
+			//Transmitir los comandos mediante sockets
+
+		} else {
+			cout << "NADA QUE TRANSMITIR PARA COMANDOS" << endl;
+		}
+
+		// Mutex shidindices unlock
+
+		//Mutex shmidconso lock
 		sscanf(shared_memory_conso, "%d", &freqMuestras);
+		//mutex  shmidconso unlock
+
 	}
 
 	return NULL;
@@ -98,7 +171,7 @@ void *usuario(void *arg) {
 	comandos* buffer_comandos;
 	comandos comandoActual;
 
-	buffer_comandos = (comandos*) shmat(shmidluzdatos, 0, 0);
+	buffer_comandos = (comandos*) shmat(shmidcomandos, 0, 0);
 
 	int tempfreqdefault;
 	int luzfreqdefault;
@@ -108,39 +181,63 @@ void *usuario(void *arg) {
 	char* shared_memory_conso;
 	int identificadorLuz = luz->IDmemoryLuz;
 	shared_memory_luz = (char*) shmat(identificadorLuz, 0, 0);
-	printf("USR hnmshared memory attached at address %p\n", shared_memory_luz);
+	//printf("USR hnmshared memory attached at address %p\n", shared_memory_luz);
 	int identificadorTemp = luz->IDmemoryTemp;
 	shared_memory_temp = (char*) shmat(identificadorTemp, 0, 0);
-	printf("USR hnmshared memory attached at address %p\n", shared_memory_temp);
+	//printf("USR hnmshared memory attached at address %p\n", shared_memory_temp);
 	int identificadorConso = luz->IDmemoryConso;
 	shared_memory_conso = (char*) shmat(identificadorConso, 0, 0);
-	printf("USR hnmshared memory attached at address %p\n", shared_memory_temp);
+	//printf("USR hnmshared memory attached at address %p\n", shared_memory_temp);
 	indices *indicecomando;
 	indicecomando = (indices*) shmat(shmidindices, 0, 0);
+
+	pthread_mutex_lock(&mutex_shidindices);
 	indicecomando->indCom = 0;
+	pthread_mutex_unlock(&mutex_shidindices);
 
 	for (;;) {
 
 		time_t tiempo = time(0);
 		cout << "INGRESE FRECUENCIA LUZ: ";
 		scanf("%d", &luzfreqdefault);
+		pthread_mutex_lock(&mutex_shidluz);
 		sprintf(shared_memory_luz, "%d", luzfreqdefault);
 		printf("%s\n", shared_memory_luz);
+		pthread_mutex_unlock(&mutex_shidluz);
 		comandoActual.freqLuz = luzfreqdefault;
+		pthread_mutex_lock(&mutex_shidindices);
+		pthread_mutex_lock(&mutex_shidcomandos);
 		buffer_comandos[indicecomando->indCom] = comandoActual;
+		pthread_mutex_unlock(&mutex_shidcomandos);
+		indicecomando->indLuz += 1;
+		pthread_mutex_unlock(&mutex_shidindices);
 		cout << "INGRESE FRECUENCIA TEMPERATURA: ";
 		scanf("%d", &tempfreqdefault);
+		pthread_mutex_lock(&mutex_shidtemp);
 		sprintf(shared_memory_temp, "%d", tempfreqdefault);
 		printf("%s\n", shared_memory_temp);
+		pthread_mutex_unlock(&mutex_shidtemp);
 		comandoActual.freqTemp = tempfreqdefault;
+		pthread_mutex_lock(&mutex_shidindices);
+		pthread_mutex_lock(&mutex_shidcomandos);
+		buffer_comandos[indicecomando->indTemp] = comandoActual;
+		pthread_mutex_unlock(&mutex_shidcomandos);
+		indicecomando->indTemp += 1;
+		pthread_mutex_unlock(&mutex_shidindices);
 		cout << "INGRESE FRECUENCUA CONSOLIDACION:";
 		scanf("%d", &consofreqdefault);
+		pthread_mutex_lock(&mutex_shidconso);
 		sprintf(shared_memory_conso, "%d", consofreqdefault);
 		printf("%s\n", shared_memory_conso);
+		pthread_mutex_unlock(&mutex_shidconso);
 		comandoActual.freqconsol = consofreqdefault;
 		comandoActual.tiempo = tiempo;
+		pthread_mutex_lock(&mutex_shidindices);
+		pthread_mutex_lock(&mutex_shidcomandos);
 		buffer_comandos[indicecomando->indCom] = comandoActual;
+		pthread_mutex_unlock(&mutex_shidcomandos);
 		indicecomando->indCom += 1;
+		pthread_mutex_unlock(&mutex_shidindices);
 	}
 
 	return NULL;
@@ -157,36 +254,36 @@ void *luz(void *parametros) {
 	int frecuenciaLuz = 10;
 
 	shared_memory_luz = (char*) shmat(IDmemory, 0, 0);
-	printf("LUZ hnmshared memory attached at address %p\n", shared_memory_luz);
+	//printf("LUZ hnmshared memory attached at address %p\n", shared_memory_luz);
 	int indiceactual = 0;
 	datosLuz datoactual;
 	indices *indiceluz;
 
 	buffer_luz = (datosLuz*) shmat(shmidluzdatos, 0, 0);
 	indiceluz = (indices*) shmat(shmidindices, 0, 0);
-
+	//pthread_mutex_lock(&mutex_shidindices);
 	indiceluz->indLuz = 0;
+	//pthread_mutex_unlock(&mutex_shidindices);
 	for (;;) {
+		pthread_mutex_lock(&mutex_shidluz);
 		sscanf(shared_memory_luz, "%d", &frecuenciaLuz);
+		pthread_mutex_unlock(&mutex_shidluz);
 		time_t tiempo = time(0);
 		struct tm * actual = localtime(&tiempo);
 		uint16_t pin_value = a_pin2->read();
-
 		float Rsensor;
 		Rsensor = (float) (1023 - pin_value) * 10 / pin_value;
 		std::cout << "Luz: " << actual->tm_mon + 1 << "/" << actual->tm_mday
 				<< "/" << actual->tm_hour << ":" << actual->tm_min << ": "
 				<< Rsensor << std::endl;
-
 		datoactual.datoLuz = Rsensor;
 		datoactual.tiempo = tiempo;
-
-		//mutex
+		pthread_mutex_lock(&mutex_shidluzdatos); //Mutex Buffer Datos Luz Lock
+		pthread_mutex_lock(&mutex_shidindices);
 		buffer_luz[indiceluz->indLuz] = datoactual;
 		indiceluz->indLuz += 1;
-
-		//mutex
-
+		pthread_mutex_unlock(&mutex_shidindices);
+		pthread_mutex_unlock(&mutex_shidluzdatos); //Mutex Buffer Datos luz unLock
 		sleep(frecuenciaLuz);
 	}
 	return NULL;
@@ -204,15 +301,18 @@ void *temperatura(void *parametros) {
 	indices *indicetemp;
 
 	shared_memory_temp = (char*) shmat(IDmemory, 0, 0);
-	printf("UJUUUU AQUI VOYnmshared memory attached at address %p\n",
-			shared_memory_temp);
+//printf("UJUUUU AQUI VOYnmshared memory attached at address %p\n",shared_memory_temp);
 
 	buffer_Temp = (datosTemp*) shmat(shmidtempdatos, 0, 0);
 	indicetemp = (indices*) shmat(shmidindices, 0, 0);
+	pthread_mutex_lock(&mutex_shidindices);
 	indicetemp->indTemp = 0;
+	pthread_mutex_unlock(&mutex_shidindices);
 
 	for (;;) {
+		pthread_mutex_lock(&mutex_shidtemp);
 		sscanf(shared_memory_temp, "%d", &frecuenciaTemp);
+		pthread_mutex_unlock(&mutex_shidtemp);
 		uint16_t pin_value = a_pin_tempe->read();
 		float R = 1023.0 / ((float) pin_value) - 1.0;
 		R = 100000.0 * R;
@@ -226,10 +326,12 @@ void *temperatura(void *parametros) {
 
 		datoActual.datoTemperatura = temperature;
 		datoActual.tiempo = tiempo;
-
-		//mutex
+		pthread_mutex_lock(&mutex_shidtempdatos); //Mutex Buffer Datos Temp Lock
+		pthread_mutex_lock(&mutex_shidindices);
 		buffer_Temp[indicetemp->indTemp] = datoActual;
 		indicetemp->indTemp += 1;
+		pthread_mutex_unlock(&mutex_shidindices);
+		pthread_mutex_unlock(&mutex_shidtempdatos); //Mutex Buffer Datos Temp Unlock
 		//mutex
 		sleep(frecuenciaTemp);
 	}
@@ -250,21 +352,21 @@ int main() {
 		return MRAA_ERROR_INVALID_PLATFORM;
 	}
 
-	// Creacion Instancia sensor Luz
+// Creacion Instancia sensor Luz
 	mraa::Aio* a_pin_luz = new mraa::Aio(0);
 	if (a_pin_luz == NULL) {
 		std::cerr << "Can't create mraa::Aio object, exiting" << std::endl;
 		return MRAA_ERROR_UNSPECIFIED;
 	}
 
-	// Creacion sensor temperatura
+// Creacion sensor temperatura
 	mraa::Aio* a_pin_tmp = new mraa::Aio(1);
 	if (a_pin_tmp == NULL) {
 		std::cerr << "Can't create mraa::Aio object, exiting" << std::endl;
 		return MRAA_ERROR_UNSPECIFIED;
 	}
 
-	int shmidluz; //shared memory ID LUZ
+	int shmidluz; //shared memory ID LUZ Frecuencia
 	if ((shmidluz = shmget(IPC_PRIVATE, size,
 	IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR)) == -1) {
 		perror("shmget");
@@ -288,7 +390,7 @@ int main() {
 		exit(1);
 	}
 
-	//shared memory ID Datos Luz
+//shared memory ID Datos Luz
 	if ((shmidluzdatos = shmget(IPC_PRIVATE, sizeof(datosLuz),
 	IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR)) == -1) {
 		perror("shmget");
@@ -296,7 +398,7 @@ int main() {
 		exit(1);
 	}
 
-	//shared memory ID Datos Temperatura
+//shared memory ID Datos Temperatura
 	if ((shmidtempdatos = shmget(IPC_PRIVATE, sizeof(datosTemp),
 	IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR)) == -1) {
 		perror("shmget");
@@ -304,7 +406,7 @@ int main() {
 		exit(1);
 	}
 
-	//shared memory ID Indices
+//shared memory ID Indices
 	if ((shmidindices = shmget(IPC_PRIVATE, sizeof(indices),
 	IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR)) == -1) {
 		perror("shmget");
@@ -312,7 +414,15 @@ int main() {
 		exit(1);
 	}
 
-	//Instancias de Estructuras
+//shared memory ID historialComandos
+	if ((shmidcomandos = shmget(IPC_PRIVATE, sizeof(indices),
+	IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR)) == -1) {
+		perror("shmget");
+		cout << "Esta Jodido en buffer comandos" << endl;
+		exit(1);
+	}
+
+//Instancias de Estructuras
 	sensorLuz luz1;
 	sensorTemp temp1;
 	infoUsuario usuario1;
@@ -327,7 +437,7 @@ int main() {
 	usuario1.IDmemoryTemp = shmidtemp;
 	usuario1.IDmemoryConso = shmidconso;
 
-	//Creacion Hilos
+//Creacion Hilos
 
 	pthread_t HiloLuz, HiloTmp, HiloUsr, HiloConso;
 
