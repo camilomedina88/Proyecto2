@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sqlite3.h> 
+#include <time.h>
 
-#define DATABASE_LOCATION "test.db"
+#define DATABASE_LOCATION "/www/pages/SE_P2.db"
+#define MEAN_SQL_SIZE 150
 
 static int callback(void *data, int argc, char **argv, char **azColName){
    int i;
@@ -53,7 +55,62 @@ int create_database(sqlite3 *db)
    sqlite3_close(db);
 }
 
+void create_dummy_db(sqlite3 *db, int n_temp, int n_lux, int n_com)
+{
+   char buffer[80];
+   time_t raw_time;
+   struct tm * current_time;
+   int i;
 
+   char * sql;
+   sql = (char*) malloc((MEAN_SQL_SIZE)*(n_temp + n_com + n_lux));
+   if(sql == NULL)
+   {
+      printf("malloc failed\n");
+   }
+   else
+   {
+      printf("malloc success\n");
+   }
+   char *zErrMsg = 0;
+   int rc; //Result of the sqlite functions
+
+   raw_time = time(0);
+   current_time = localtime(&raw_time);
+   strftime(buffer,80,"%F %T",current_time);
+   printf("%s",buffer);
+
+   rc = sqlite3_open(DATABASE_LOCATION, &db);  
+
+   for(i=0;i<n_temp;i++)
+   {
+      /* Create SQL statement */
+      sprintf(sql,"%s INSERT INTO TEMPERATURE(VALUE,TIMESTAMP) VALUES(%f,'%s');",sql, 3.1416 + i,buffer);
+      printf("%d\n",i);
+   }
+   for(i=0;i<n_lux;i++)
+   {
+      /* Create SQL statement */
+      sprintf(sql,"%s INSERT INTO ILUMINATION(VALUE,TIMESTAMP) VALUES(%f,'%s');",sql, 1.123 + i,buffer);
+      printf("%d\n",i);
+   }
+   for(i=0;i<n_com;i++)
+   {
+      /* Create SQL statement */
+      sprintf(sql,"%s INSERT INTO COMMANDS(TEMP_F,ILUM_F,CONSOL_F,TIMESTAMP) VALUES(%d,%d,%d,'%s');", sql, i+1, i+2, i+3, buffer);
+      printf("%d\n",i);
+   }
+
+   rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+   if( rc != SQLITE_OK )
+   {
+      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+      sqlite3_free(zErrMsg);
+   }
+
+   free(sql);
+   sqlite3_close(db);
+}
 
 int main(int argc, char* argv[])
 {
@@ -63,7 +120,7 @@ int main(int argc, char* argv[])
    char *sql;
    const char* data = "Callback function called";
 
-
+   
    if( access(DATABASE_LOCATION, F_OK) != -1)
    {
       puts("Database already exist");
@@ -74,12 +131,7 @@ int main(int argc, char* argv[])
       puts("Database created");
    }
 
-
-
-
-
-
-
+   create_dummy_db(db,300,25,532);
 
    // //Open Database
    // rc = sqlite3_open(DATABASE_LOCATION, &db);  //Location of the Database
