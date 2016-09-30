@@ -1,0 +1,34 @@
+message Transmision {
+
+	repeated datosTemp bufferTemp=1;
+	repeated datosLuz bufferLuz=2;
+	repeated comandos bufferComandos=3;
+}
+
+message datosLuz {
+	optional int32 mes=1;
+	optional int32 dia=2;
+	optional int32 hora=3;
+	optional int32 minutos=4; 
+	optional float datoLuz=5;
+}
+
+message datosTemp {
+	optional int32 mes=1;
+	optional int32 dia=2;
+	optional int32 hora=3;
+	optional int32 minutos=4; 
+	optional float datoTemperatura=5;
+}
+
+message comandos {
+	optional int32 mes=1;
+	optional int32 dia=2;
+	optional int32 hora=3;
+	optional int32 minutos=4; 
+	optional int32 freqTemp=5;
+	optional int32 freqLuz=6;
+	optional int32 freqconsol=7;
+}
+
+
