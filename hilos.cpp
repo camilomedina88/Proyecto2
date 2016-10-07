@@ -15,8 +15,18 @@
 #include <sys/shm.h>
 #include <string>
 #include <sstream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <iostream>
+
 #define size 1024
 using namespace std;
+
 typedef struct sensorLuz {
 	int IDmemory;
 	mraa::Aio* pinLuz;
@@ -57,6 +67,12 @@ pthread_mutex_t mutex_shidtemp = PTHREAD_MUTEX_INITIALIZER; // Mutex frecuencia 
 pthread_mutex_t mutex_shidconso = PTHREAD_MUTEX_INITIALIZER; //Mutex Frecuencia Consolidacion
 pthread_mutex_t mutex_shidcomandos = PTHREAD_MUTEX_INITIALIZER; //Mutex Buffer Comandos
 void *consolidacion(void *arg) {
+
+
+
+
+
+
 	char* shared_memory_conso;
 	int freqMuestras = 12;
 
@@ -83,57 +99,54 @@ void *consolidacion(void *arg) {
 	datosLuz* buffLuzActual;
 	datosTemp* buffTempActual;
 	comandos* bufferComActual;
-	int indiceLuz,indiceTemp, indiceCom;
-
+	int indiceLuz, indiceTemp, indiceCom;
 
 	for (;;) {
 		//cout<<"Frecuencia Muestreo Actual: "<<freqMuestras<<endl;
 		sleep(freqMuestras);
-		cout<<"CONSOLIDACION"<<endl;
+		cout << "CONSOLIDACION" << endl;
 		pthread_mutex_lock(&mutex_shidindices);
-		indiceLuz=indicestodos->indLuz;
-		indiceTemp=indicestodos->indTemp;
-		indiceCom=indicestodos->indCom;
+		indiceLuz = indicestodos->indLuz;
+		indiceTemp = indicestodos->indTemp;
+		indiceCom = indicestodos->indCom;
 
 		pthread_mutex_lock(&mutex_shidluzdatos);
-		buffLuzActual=buffer_luz;
+		buffLuzActual = buffer_luz;
 		pthread_mutex_unlock(&mutex_shidluzdatos);
 
 		pthread_mutex_lock(&mutex_shidtempdatos);
-		buffTempActual=buffer_Temp;
+		buffTempActual = buffer_Temp;
 		pthread_mutex_unlock(&mutex_shidtempdatos);
 
 		pthread_mutex_lock(&mutex_shidcomandos);
-		bufferComActual=buffer_comandos;
+		bufferComActual = buffer_comandos;
 		pthread_mutex_unlock(&mutex_shidcomandos);
-
 
 		/*
-		cout<<"VOY A MOSTRAR LOS DATOS DE LUZ"<<endl;
-		for(int i=1;i<=indiceLuz;i++){
-			cout<<"indice: "<<i<<" Luz: "<<buffLuzActual[i].datoLuz<<endl;
+		 cout<<"VOY A MOSTRAR LOS DATOS DE LUZ"<<endl;
+		 for(int i=1;i<=indiceLuz;i++){
+		 cout<<"indice: "<<i<<" Luz: "<<buffLuzActual[i].datoLuz<<endl;
 
-		}*/
+		 }*/
 
 		/* OPCION 1
-		pthread_mutex_lock(&mutex_shidluzdatos);
-		memcpy ( &buffLuzActual, &buffer_luz, sizeof(datosLuz)*indiceLuz);
-		pthread_mutex_unlock(&mutex_shidluzdatos);
+		 pthread_mutex_lock(&mutex_shidluzdatos);
+		 memcpy ( &buffLuzActual, &buffer_luz, sizeof(datosLuz)*indiceLuz);
+		 pthread_mutex_unlock(&mutex_shidluzdatos);
 
-		pthread_mutex_lock(&mutex_shidtempdatos);
-		memcpy ( &buffTempActual, &buffer_Temp, sizeof(datosTemp)*indiceTemp);
-		pthread_mutex_unlock(&mutex_shidtempdatos);
+		 pthread_mutex_lock(&mutex_shidtempdatos);
+		 memcpy ( &buffTempActual, &buffer_Temp, sizeof(datosTemp)*indiceTemp);
+		 pthread_mutex_unlock(&mutex_shidtempdatos);
 
-		pthread_mutex_lock(&mutex_shidcomandos);
-		memcpy ( &bufferComActual, &buffer_comandos, sizeof(comandos)*indiceCom);
-		pthread_mutex_unlock(&mutex_shidcomandos);
+		 pthread_mutex_lock(&mutex_shidcomandos);
+		 memcpy ( &bufferComActual, &buffer_comandos, sizeof(comandos)*indiceCom);
+		 pthread_mutex_unlock(&mutex_shidcomandos);
 		 */
 
-		indicestodos->indLuz =0;
-		indicestodos->indCom =0;
-		indicestodos->indTemp=0;
+		indicestodos->indLuz = 0;
+		indicestodos->indCom = 0;
+		indicestodos->indTemp = 0;
 		pthread_mutex_unlock(&mutex_shidindices);
-
 
 		pthread_mutex_lock(&mutex_shidconso); //Mutex shmidconso lock
 		sscanf(shared_memory_conso, "%d", &freqMuestras);
@@ -237,10 +250,11 @@ void *luz(void *parametros) {
 		uint16_t pin_value = a_pin2->read();
 		float Rsensor;
 		Rsensor = (float) (1023 - pin_value) * 10 / pin_value;
-std::cout  << "Luz: " << actual->tm_mon + 1 << "/" << actual->tm_mday
+		std::cout << "Luz: " << actual->tm_mon + 1 << "/" << actual->tm_mday
 
-				<< "/" << actual->tm_hour << ":" << actual->tm_min << ": "
-				<< Rsensor << std::endl;
+		<< "/" << actual->tm_hour << ":" << actual->tm_min << ": " << Rsensor
+				<< std::endl;
+
 		datoactual.datoLuz = Rsensor;
 		datoactual.tiempo = tiempo;
 		pthread_mutex_lock(&mutex_shidluzdatos); //Mutex Buffer Datos Luz Lock
@@ -263,7 +277,6 @@ void *temperatura(void *parametros) {
 	datosTemp datoActual;
 	indices *indicetemp;
 	shared_memory_temp = (char*) shmat(IDmemory, 0, 0);
-//printf("UJUUUU AQUI VOYnmshared memory attached at address %p\n",shared_memory_temp);
 	buffer_Temp = (datosTemp*) shmat(shmidtempdatos, 0, 0);
 	indicetemp = (indices*) shmat(shmidindices, 0, 0);
 	pthread_mutex_lock(&mutex_shidindices);
@@ -280,9 +293,9 @@ void *temperatura(void *parametros) {
 				- 273.15;
 		time_t tiempo = time(0);
 		struct tm * actual = localtime(&tiempo);
-std::cout  << "Tem: " << actual->tm_mon + 1 << "/" << actual->tm_mday
+		std::cout << "Tem: " << actual->tm_mon + 1 << "/" << actual->tm_mday
 
-				<< "/" << actual->tm_hour << ":" << actual->tm_min << ": "
+		<< "/" << actual->tm_hour << ":" << actual->tm_min << ": "
 				<< temperature << std::endl;
 		datoActual.datoTemperatura = temperature;
 		datoActual.tiempo = tiempo;
