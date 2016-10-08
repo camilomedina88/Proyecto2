@@ -23,6 +23,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <iostream>
+//#include "serial_data.h"
 
 #define size 1024
 using namespace std;
@@ -40,21 +41,25 @@ typedef struct infoUsuario {
 	int IDmemoryTemp;
 	int IDmemoryConso;
 } infoUsuario;
-typedef struct datosluz {
-	time_t tiempo;
-	float datoLuz;
-} datosLuz;
-typedef struct datosTemp {
-	time_t tiempo;
-	float datoTemperatura;
-} datosTemp;
-typedef struct indices {
-	int indLuz, indTemp, indCom;
-} indices;
-typedef struct comandos {
-	time_t tiempo;
-	int freqTemp, freqLuz, freqconsol;
-} comandos;
+
+#ifndef _STRUCTURES_P2_
+#define _STRUCTURES_P2_
+	typedef struct datosluz {
+		time_t tiempo;
+		float datoLuz;
+	} datosLuz;
+	typedef struct datosTemp {
+		time_t tiempo;
+		float datoTemperatura;
+	} datosTemp;
+	typedef struct indices {
+		int indLuz, indTemp, indCom;
+	} indices;
+	typedef struct comandos {
+		time_t tiempo;
+		int freqTemp, freqLuz, freqconsol;
+	} comandos;
+#endif
 int shmidtempdatos;
 int shmidluzdatos;
 int shmidindices;
@@ -66,10 +71,68 @@ pthread_mutex_t mutex_shidluz = PTHREAD_MUTEX_INITIALIZER; //Mutex frecuencia lu
 pthread_mutex_t mutex_shidtemp = PTHREAD_MUTEX_INITIALIZER; // Mutex frecuencia temperatura
 pthread_mutex_t mutex_shidconso = PTHREAD_MUTEX_INITIALIZER; //Mutex Frecuencia Consolidacion
 pthread_mutex_t mutex_shidcomandos = PTHREAD_MUTEX_INITIALIZER; //Mutex Buffer Comandos
+
+void error(const char *msg) {
+	perror(msg);
+	exit(0);
+}
+
+
+
+int serialize(char * buffer, datosTemp * d_temp, datosLuz * d_luz, comandos * d_comandos, indices index)
+{
+	int i;
+	sprintf(buffer,"{\"indeces\":[%d,%d,%d],\"temp\":[", index.indTemp, index.indLuz, index.indCom);
+	for(i=0; i < index.indTemp - 1; i++)
+	{
+		sprintf(buffer,"%s{\"v\":%4.2f,\"ts\":%li},", buffer, d_temp[i].datoTemperatura, (long int)d_temp[i].tiempo);
+	}
+	sprintf(buffer,"%s{\"v\":%4.2f,\"ts\":%li}],\"lux\":[" , buffer, d_temp[i].datoTemperatura, (long int)d_temp[i].tiempo);
+
+	for(i=0; i < index.indLuz - 1; i++)
+	{
+		sprintf(buffer,"%s{\"v\":%4.2f,\"ts\":%li},", buffer, d_luz[i].datoLuz, (long int)d_luz[i].tiempo);
+	}
+	sprintf(buffer,"%s{\"v\":%4.2f,\"ts\":%li}],\"com\":[" , buffer, d_luz[i].datoLuz, (long int)d_luz[i].tiempo);
+
+	for(i=0; i < index.indCom - 1; i++)
+	{
+		sprintf(buffer,"%s{\"t\":%d,\"l\":%d,\"c\":%d,\"ts\":%li},", buffer, d_comandos[i].freqTemp, d_comandos[i].freqLuz, d_comandos[i].freqconsol , (long int)d_comandos[i].tiempo);
+	}
+	sprintf(buffer,"%s{\"t\":%d,\"l\":%d,\"c\":%d,\"ts\":%li}]}" , buffer, d_comandos[i].freqTemp, d_comandos[i].freqLuz, d_comandos[i].freqconsol , (long int)d_comandos[i].tiempo);
+
+	printf("%s",buffer);
+}
+
 void *consolidacion(void *arg) {
 
+	int sockfd, portno, n;
+	struct sockaddr_in serv_addr;
+	struct hostent *server;
+	char buffer[60000];
 
+	portno = 51717;
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	//sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
+	if (sockfd < 0)
+		error("ERROR opening socket");
+
+	server = gethostbyname("nick.local");
+	if (server == NULL) {
+		fprintf(stderr, "ERROR, no such host\n");
+		exit(0);
+	}
+
+	bzero((char *) &serv_addr, sizeof(serv_addr)); // sets all values in a buffer to zero
+	serv_addr.sin_family = AF_INET; // contains a code for the address family
+	//serv_addr.sin_family = AF_UNIX;
+	bcopy((char *) server->h_addr,(char *)&serv_addr.sin_addr.s_addr,server->h_length);
+
+	serv_addr.sin_port = htons(portno); //contain the port number
+	if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+
+		error("ERROR connecting");
 
 
 
@@ -96,9 +159,10 @@ void *consolidacion(void *arg) {
 	datosLuz* buffer_luz;
 	buffer_luz = (datosLuz*) shmat(shmidluzdatos, 0, 0);
 
-	datosLuz* buffLuzActual;
-	datosTemp* buffTempActual;
-	comandos* bufferComActual;
+	datosLuz buffLuzActual[600];
+	datosTemp buffTempActual[600];
+	comandos bufferComActual[600];
+	indices indicesActual;
 	int indiceLuz, indiceTemp, indiceCom;
 
 	for (;;) {
@@ -109,17 +173,38 @@ void *consolidacion(void *arg) {
 		indiceLuz = indicestodos->indLuz;
 		indiceTemp = indicestodos->indTemp;
 		indiceCom = indicestodos->indCom;
+		indicesActual.indCom=indicestodos->indCom;
+		indicesActual.indLuz=indicestodos->indLuz;
+		indicesActual.indTemp=indicestodos->indTemp;
 
 		pthread_mutex_lock(&mutex_shidluzdatos);
-		buffLuzActual = buffer_luz;
+
+		for(int i=1;i<=indiceLuz;i++){
+
+			buffLuzActual[i]=buffer_luz[i];
+
+		}
 		pthread_mutex_unlock(&mutex_shidluzdatos);
 
 		pthread_mutex_lock(&mutex_shidtempdatos);
-		buffTempActual = buffer_Temp;
+
+
+		for(int i=1;i<=indiceTemp;i++){
+					buffTempActual[i]=buffer_Temp[i];
+				}
+
+		//buffTempActual = buffer_Temp;
 		pthread_mutex_unlock(&mutex_shidtempdatos);
 
 		pthread_mutex_lock(&mutex_shidcomandos);
-		bufferComActual = buffer_comandos;
+
+
+		for(int i=1;i<=indiceCom;i++){
+							bufferComActual[i]=buffer_comandos[i];
+						}
+
+
+		//bufferComActual = buffer_comandos;
 		pthread_mutex_unlock(&mutex_shidcomandos);
 
 		/*
@@ -151,6 +236,30 @@ void *consolidacion(void *arg) {
 		pthread_mutex_lock(&mutex_shidconso); //Mutex shmidconso lock
 		sscanf(shared_memory_conso, "%d", &freqMuestras);
 		pthread_mutex_unlock(&mutex_shidconso); //Mutex shmidconso lock
+
+
+		//serialize(char * buffer, datosTemp * d_temp, datosLuz * d_luz, comandos * d_comandos, indices index);
+		serialize(buffer, buffTempActual, buffLuzActual, bufferComActual, indicesActual);
+
+
+		// /*
+		//printf("Please enter the message: ");
+		cout<<"Transmite el Socket"<<endl;
+		//bzero(buffer, 60000);
+		//buffer="CAMM";
+
+		//fgets(buffer, 255, stdin);
+		n = write(sockfd, buffer, strlen(buffer));
+		cout<<"Transfirio"<<endl;
+		if (n < 0)
+			error("ERROR writing to socket");
+		bzero(buffer, 60000);
+		//n = read(sockfd, buffer, 60000-1);
+		//if (n < 0)
+		//error("ERROR reading from socket");
+		//printf("%s\n", buffer);
+
+		// */
 	}
 	return NULL;
 }
