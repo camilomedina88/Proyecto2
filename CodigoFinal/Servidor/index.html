@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Historial de datos</title>
+	<meta charset="UTF-8">
+
+	<style>
+	/*div {
+		margin-left: 5px;
+		margin-right: 5px
+	}*/
+	table{
+		border-collapse: collapse;
+		width: 90%;
+		overflow-x:auto;
+	}
+	.floating-box {
+    float: left;
+    width: 500px;
+    height: 500px;
+    margin: 10px;
+}
+	table, th, td {
+	    border: 1px solid black;
+	}
+	.column-left{ float: left; width: 33%; }
+	.column-right{ float: right; width: 33%; }
+	.column-center{ display: inline-block; width: 33%; }
+	</style>
+</head>
+<body>
+
+<h1>Historial</h1>
+<div>
+	<div id="tempDiv" class="floating-box"><!-- Plotly chart will be drawn inside this DIV --></div>
+	<div id="luzDiv" class="floating-box"><!-- Plotly chart will be drawn inside this DIV --></div>
+</div>
+<div style="clear:left"></div>
+<div>
+	<div class="column-left">
+		<h2>Historial de temperatura</h2>
+		<p>En grados centígrados</p>
+		<table id = "temperature">
+		</table>
+	</div>
+
+	<div class="column-center">
+		<h2>Historial de intensidad lumínica</h2>
+		<p>En lúmenes</p>
+		<table id = "ilumination">
+		</table>
+	</div>
+
+	<div class="column-right">
+		<h2>Historial de commandos</h2>
+		<p>En segundos</p>
+		<table id = "commands">
+		</table>
+	</div>
+</div>
+<hr>
+<script src='js/sql.js'></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script >
+
+	//Plot example
+	var temp = [
+	  {
+	    x: [],
+	    y: [],
+	    type: 'scatter'
+	  }
+	];
+	var luz = [
+	  {
+	    x: [],
+	    y: [],
+	    type: 'scatter'
+	  }
+	];
+	// var temp_x = [];
+	// var temp_y = [];
+
+
+	// var temp = [
+	// 	  {
+	// 	    x: temp_x,
+	// 	    y: temp_y,
+	// 	    type: 'scatter'
+	// 	  }
+	// 	];
+
+	console.log("Loading existing DB");
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', 'SE_P2.db', true);
+	xhr.responseType = 'arraybuffer';
+
+	xhr.onload = function(e) {
+		var uInt8Array = new Uint8Array(this.response);
+		var db = new SQL.Database(uInt8Array);
+		var command_str = "";
+		var temperature_str = "";
+		var lux_str = "";
+		var contents = db.exec("SELECT * FROM COMMANDS");
+		console.log(contents);
+		// contents is now [{columns:['col1','col2',...], values:[[first row], [second row], ...]}]
+
+		command_str+= "<tr>";
+		command_str+= "<th>Temperatura</th>\n";
+		command_str+= "<th>Iluminación</th>\n";
+		command_str+= "<th>Consolidación</th>\n";
+		command_str+= "<th>TimeStamp</th> </tr>\n";
+		for (i in contents[0].values)
+		{
+			command_str+= "<tr>";
+			command_str+= "<th>" + contents[0].values[i][0] + "</th>\n";
+			command_str+= "<th>" + contents[0].values[i][1] + "</th>\n";
+			command_str+= "<th>" + contents[0].values[i][2] + "</th>\n";
+			command_str+= "<th>" + contents[0].values[i][3] + "</th> </tr>\n";
+		}
+		document.getElementById("commands").innerHTML = command_str;
+		var contents = db.exec("SELECT * FROM TEMPERATURE");
+		console.log(contents);
+		// contents is now [{columns:['col1','col2',...], values:[[first row], [second row], ...]}]
+
+		temperature_str+= "<tr>";
+		temperature_str+= "<th>Temperatura</th>\n";
+		temperature_str+= "<th>TimeStamp</th> </tr>\n";
+		for (i in contents[0].values)
+		{
+			temperature_str+= "<tr>";
+			temperature_str+= "<th>" + contents[0].values[i][0] + "</th>\n";
+			temperature_str+= "<th>" + contents[0].values[i][1] + "</th> </tr>\n";
+			temp[0].x[i]=contents[0].values[i][1];
+			temp[0].y[i]=contents[0].values[i][0];
+		}
+		document.getElementById("temperature").innerHTML = temperature_str;
+
+		console.log(temp);
+
+		var contents = db.exec("SELECT * FROM ILUMINATION");
+		console.log(contents);
+		// contents is now [{columns:['col1','col2',...], values:[[first row], [second row], ...]}]
+
+		lux_str+= "<tr>";
+		lux_str+= "<th>Intensidad</th>\n";
+		lux_str+= "<th>TimeStamp</th> </tr>\n";
+		for (i in contents[0].values)
+		{
+			lux_str+= "<tr>";
+			lux_str+= "<th>" + contents[0].values[i][0] + "</th>\n";
+			lux_str+= "<th>" + contents[0].values[i][1] + "</th> </tr>\n";
+			luz[0].x[i]=contents[0].values[i][1];
+			luz[0].y[i]=contents[0].values[i][0];
+		}
+		document.getElementById("ilumination").innerHTML = lux_str;
+		Plotly.newPlot('tempDiv', temp);
+		Plotly.newPlot('luzDiv', luz);
+	};
+	xhr.send();
+
+	
+
+</script>
+</body>
+</html>
