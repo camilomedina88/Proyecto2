@@ -61,6 +61,8 @@ int shmidluzdatos;
 int shmidindices;
 int shmidcomandos;
 
+
+
 pthread_mutex_t mutex_shidtempdatos = PTHREAD_MUTEX_INITIALIZER; //Mutex Buffer Datos Temperatura
 pthread_mutex_t mutex_shidluzdatos = PTHREAD_MUTEX_INITIALIZER; // Mutex buffer datos luz
 pthread_mutex_t mutex_shidindices = PTHREAD_MUTEX_INITIALIZER; //Mutex indices
@@ -76,6 +78,9 @@ void *consolidacion(void *arg) {
 	//Buffer Temperatura
 	datosTemp* buffer_Temp;
 	buffer_Temp = (datosTemp*) shmat(shmidtempdatos, 0, 0);
+	//Buffer Luz
+	datosLuz* buffer_luz;
+	buffer_luz = (datosLuz*) shmat(shmidluzdatos, 0, 0);
 	//Buffer Comandos
 	comandos* buffer_comandos;
 	buffer_comandos = (comandos*) shmat(shmidcomandos, 0, 0);
@@ -83,82 +88,95 @@ void *consolidacion(void *arg) {
 	indices *indicestodos;
 	indicestodos = (indices*) shmat(shmidindices, 0, 0);
 	//Frecuencias
-	infoUsuario *frecuencias = (infoUsuario *) arg;
-	int IDFreqMuestras = frecuencias->IDmemoryConso;
-	shared_memory_conso = (char*) shmat(IDFreqMuestras, 0, 0);
-	//Buffer Luz
-	datosLuz* buffer_luz;
-	buffer_luz = (datosLuz*) shmat(shmidluzdatos, 0, 0);
+
+	int IDFreqMuestras=buffer_comandos->freqconsol;
+
+	//infoUsuario *frecuencias = (infoUsuario *) arg;
+	//int IDFreqMuestras = frecuencias->IDmemoryConso;
+	//shared_memory_conso = (char*) shmat(IDFreqMuestras, 0, 0);
+
+	datosLuz* buffLuzActual;
+	datosTemp* buffTempActual;
+	comandos* bufferComActual;
+	int indiceLuz,indiceTemp, indiceCom;
 
 	for (;;) {
+		cout<<"ENTRA A LOOP FRECUENCIA"<<endl;
+		cout<<"La frecuencia de muestreo actual: "<<freqMuestras<<endl;
 		sleep(freqMuestras);
 
 		//CONSOLIDACION LUZ
-		// Mutex shidindices lock
-		if (indicestodos->indLuz > 0) {
+		pthread_mutex_lock(&mutex_shidindices);
+		pthread_mutex_lock(&mutex_shidluzdatos); //Mutex Buffer Datos Luz Lock
+		memcpy ( &buffLuzActual, &buffer_luz, sizeof(datosLuz)*indicestodos->indLuz );
+		pthread_mutex_unlock(&mutex_shidluzdatos); //Mutex Buffer Datos Luz Lock
 
-			while (indicestodos->indLuz > 0) {
+		pthread_mutex_lock(&mutex_shidtempdatos); //Mutex Buffer Datos Temp Lock
+		memcpy ( &buffTempActual, &buffer_Temp, sizeof(datosTemp)*indicestodos->indTemp);
+		pthread_mutex_unlock(&mutex_shidtempdatos); //Mutex Buffer Datos Temp unLock
 
-				//Mutex shidluzdatos lock
+		pthread_mutex_lock(&mutex_shidcomandos);
+		memcpy ( &bufferComActual, &buffer_comandos, sizeof(comandos)*indicestodos->indCom);
+		pthread_mutex_unlock(&mutex_shidcomandos);
 
-				//Aqui se lee el buffer de luz
-				//Mutex shidluzdatos unlock
+		cout<<"Copio memoria"<<endl;
 
+		indiceLuz=indicestodos->indLuz;
+		indiceTemp=indicestodos->indTemp;
+		indiceCom=indicestodos->indCom;
+		indicestodos->indLuz =0;
+		indicestodos->indCom =0;
+		indicestodos->indTemp=0;
+		pthread_mutex_unlock(&mutex_shidindices);
+
+		//CONSOLIDACIÓN LUZ
+		if (indiceLuz>0) {
+			while (indiceLuz> 0) {
+				cout<<"TRANSMITIENDO LUZ"<<endl;
+				//Transmitir el buffer de luz por el socket
+				indiceLuz-=1;
 			}
-
-			//Transmitir los datos de luz mediante sockets
-
-			indicestodos->indLuz = 0;
+			indiceLuz=0;
 		} else {
 			cout << "NADA QUE TRANSMITIR PARA LUZ" << endl;
 		}
 
-		// Mutex shidindices unlock
-
 		//CONSOLIDACIÓN TEMPERATURA
-		// Mutex shidindices lock
-		if (indicestodos->indTemp > 0) {
-
-			while (indicestodos->indTemp > 0) {
-
-				//Mutex shidtempzdatos lock
-				//Aqui se lee el buffer de temperatura
-				//Mutex shidtempdatos unlock
-
+		if (indiceTemp> 0) {
+			while (indiceTemp> 0) {
+				cout<<"TRANSMITIENDO TEMP"<<endl;
+				indiceTemp-=1;
+				//Transmitir el buffer de temperatura por el socket
 			}
-			//Transmitir los datos temperatura mediante sockets
-
-			indicestodos->indTemp = 0;
-
+			indiceTemp = 0;
 		} else {
 			cout << "NADA QUE TRANSMITIR PARA TEMPERATURA" << endl;
 		}
-		// Mutex shidindices unlock
 
 		//CONSOLIDACIÓN COMANDOS
-		// Mutex shidindices lock
 
-		if (indicestodos->indCom > 0) {
+		if (indiceCom> 0) {
 
-			while (indicestodos->indCom > 0) {
-
-				//Mutex shmidcomandos lock
-				//Aqui se lee el buffer de comandos
-
-				//Mutex shmidcomandos lock
+			while (indiceCom> 0) {
+				//Transmitir el buffer de comandos por el socket
+				indiceCom-=1;
 			}
-
-			//Transmitir los comandos mediante sockets
 
 		} else {
 			cout << "NADA QUE TRANSMITIR PARA COMANDOS" << endl;
 		}
 
-		// Mutex shidindices unlock
 
-		//Mutex shmidconso lock
+
+
+
+		pthread_mutex_lock(&mutex_shidconso); //Mutex shmidconso lock
+
+		//freqMuestras=shared_memory_conso;
 		sscanf(shared_memory_conso, "%d", &freqMuestras);
-		//mutex  shmidconso unlock
+		pthread_mutex_unlock(&mutex_shidconso); //mutex  shmidconso unlock
+
+		cout<<"SALE DE TRANSMISION"<<endl;
 
 	}
 
@@ -178,7 +196,7 @@ void *usuario(void *arg) {
 	int consofreqdefault;
 	char* shared_memory_luz;
 	char* shared_memory_temp;
-	char* shared_memory_conso;
+	int* shared_memory_conso;
 	int identificadorLuz = luz->IDmemoryLuz;
 	shared_memory_luz = (char*) shmat(identificadorLuz, 0, 0);
 	//printf("USR hnmshared memory attached at address %p\n", shared_memory_luz);
@@ -186,7 +204,7 @@ void *usuario(void *arg) {
 	shared_memory_temp = (char*) shmat(identificadorTemp, 0, 0);
 	//printf("USR hnmshared memory attached at address %p\n", shared_memory_temp);
 	int identificadorConso = luz->IDmemoryConso;
-	shared_memory_conso = (char*) shmat(identificadorConso, 0, 0);
+	shared_memory_conso = (int*) shmat(identificadorConso, 0, 0);
 	//printf("USR hnmshared memory attached at address %p\n", shared_memory_temp);
 	indices *indicecomando;
 	indicecomando = (indices*) shmat(shmidindices, 0, 0);
@@ -202,7 +220,7 @@ void *usuario(void *arg) {
 		scanf("%d", &luzfreqdefault);
 		pthread_mutex_lock(&mutex_shidluz);
 		sprintf(shared_memory_luz, "%d", luzfreqdefault);
-		printf("%s\n", shared_memory_luz);
+		//printf("%s\n", shared_memory_luz);
 		pthread_mutex_unlock(&mutex_shidluz);
 		comandoActual.freqLuz = luzfreqdefault;
 		pthread_mutex_lock(&mutex_shidindices);
@@ -215,7 +233,7 @@ void *usuario(void *arg) {
 		scanf("%d", &tempfreqdefault);
 		pthread_mutex_lock(&mutex_shidtemp);
 		sprintf(shared_memory_temp, "%d", tempfreqdefault);
-		printf("%s\n", shared_memory_temp);
+		//printf("%s\n", shared_memory_temp);
 		pthread_mutex_unlock(&mutex_shidtemp);
 		comandoActual.freqTemp = tempfreqdefault;
 		pthread_mutex_lock(&mutex_shidindices);
@@ -227,8 +245,13 @@ void *usuario(void *arg) {
 		cout << "INGRESE FRECUENCUA CONSOLIDACION:";
 		scanf("%d", &consofreqdefault);
 		pthread_mutex_lock(&mutex_shidconso);
-		sprintf(shared_memory_conso, "%d", consofreqdefault);
-		printf("%s\n", shared_memory_conso);
+		sprintf((char *)shared_memory_conso, "%d", consofreqdefault);
+
+		printf("Valor Conso ingresado %s\n", shared_memory_conso);
+		//printf("Valor Conso ingresado %s\n", consofreqdefault);
+
+
+
 		pthread_mutex_unlock(&mutex_shidconso);
 		comandoActual.freqconsol = consofreqdefault;
 		comandoActual.tiempo = tiempo;
