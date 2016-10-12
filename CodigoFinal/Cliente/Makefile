@@ -1,12 +1,53 @@
-.PHONY:clean
+################################################################################
+# Makefile to make sample application
+################################################################################
 
-all:SE_server
+CC=g++
+CFLAGS= 
+LDFLAGS=
 
-SE_server:SE_server.c
-	gcc SE_server.c -o SE_server -lpthread -lwebsockets
+RM := rm -rf
 
-example-server:example-server.c
-	gcc example-server.c -o example-server -lwebsockets
+LIBS := -lpthread -lwebsockets -lmraa
+COMPILE_OPTION = -O2
 
+SRC_OBJS = cliente.o 
+
+LIB_FILES = 
+
+LIB_PATH = 
+
+SRC_HEADERS = 
+
+INCLUDE_PATH =
+
+TARGET_BIN = cliente
+
+# All Target
+all: $(TARGET_BIN)
+
+# Compile c source file
+%.o: %.c $(SRC_HEADERS)
+	@echo 'Compiling file: $<'
+	$(CC) $(COMPILE_OPTION) $(INCLUDE_PATH) -Wall $(CFLAGS) -c -o"$@" "$<"
+	@echo 'Finished compiling: $<'
+	@echo ' '
+
+# Tool invocations
+$(TARGET_BIN): $(SRC_OBJS) $(LIB_FILES)
+	@echo 'Building target: $@'
+	$(CC) $(LIB_PATH) $(LDFLAGS) -o $(TARGET_BIN) $(SRC_OBJS) $(LIBS)
+	@echo 'Finished building target: $@'
+	@echo ' '
+
+install:
+	
+	cp test /opt/LivingHub/zwave/
+
+# Other Targets
 clean:
-	-rm SE_sever example-server
+	-$(RM) *.o
+	-$(RM) $(TARGET_BIN)
+	-@echo ' '
+
+.PHONY: all clean

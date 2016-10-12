@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Configuración Sistema de medición</title>
+	<meta charset="UTF-8">
+
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+        <script type="text/javascript">
+            $(function() {
+                window.WebSocket = window.WebSocket || window.MozWebSocket;
+                var websocket = new WebSocket('ws://galileo.local:5000',
+                                              'my-echo-protocol');
+                websocket.onopen = function () {
+                    document.getElementById("state").innerHTML = "Conectado";
+                    $('#state').css('color', 'green');
+                };
+                websocket.onerror = function () {
+                	document.getElementById("state").innerHTML = "Desconectado";
+                    $('#state').css('color', 'red');
+					$("div").hide();
+                };
+                websocket.onmessage = function (message) {
+                    console.log(message.data);
+                    var current_data = JSON.parse(message.data);
+                    document.getElementById("temp").value = " " + current_data.f_temp;
+					document.getElementById("luz").value = " " + current_data.f_luz;
+					document.getElementById("consol").value = " " + current_data.f_consol;
+					document.getElementById("current_temp").innerHTML = current_data.temp;
+					document.getElementById("current_luz").innerHTML = current_data.luz;
+                };
+                
+                $('button').click(function(e) {
+                	
+                    e.preventDefault();
+                    var config_json = '{"f_temp":' + $("#temp").val() + ',"f_luz":' +  $("#luz").val() + ',"f_consol":' + $("#consol").val() + "}"
+                    document.getElementById("result").innerHTML = "Mensaje enviado:<br> Frecuencia de muestreo de temperatura: " + $("#temp").val()
+                    	+ "<br>Frecuencia de muestreo de luz: " + $("#luz").val() + "<br>Frecuencia de consolidación: " + $("#consol").val() ;
+                    websocket.send(config_json);
+                });
+            });
+        </script>
+
+</head>
+
+<body>
+	<header>
+		<h1>Configuración del sistema de medición</h1>
+		<h3>Estado: <span id="state"></span><br></h3>
+		<hr>
+	</header>
+	<div>
+		<h2>Mediciones actuales</h2>
+		<p>
+			Temperatura = <big><span id="current_temp"></span>C</big><br>
+			Luminosidad = <big><span id="current_luz"></span></big>
+		</p>
+		<hr>
+		<h2>Configuración</h2>
+		<form>
+			 Frecuencia de muestreo temperatura: <br>
+			 <input id="temp" type="text" name="f_temp"> segundos<br><br>
+			 Frecuencia de muestreo iluminación: <br>
+			 <input id="luz" type="text" name="f_luz"> segundos <br><br>
+			 Frecuencia de consolidación de datos al servidor <br>
+			 <input id="consol" type="text" name="f_consol"> segundos <br>
+			 <button>Enviar</button>
+		</form>
+
+		<p id="result"></p>
+		<p id="received"></p>
+		<hr>
+	</div>
+	<footer>Todos los derechos reservados-2016</footer>
+
+</body>
+</html>
